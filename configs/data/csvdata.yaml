@@ -1,0 +1,23 @@
+_target_: pyaracnn.data.csv_datamodule.CSVDataModule
+batch_size: 32
+train_val_test_split:
+  - 80
+  - 10
+  - 10
+num_workers: 6
+pin_memory: False
+
+dataset:
+  _target_: pyaracnn.data.components.csv_dataset.CSVDataset
+  root:  ${paths.data_dir}
+  image_folder: ${paths.image_folder}
+  dataset_folder: ${paths.dataset_folder}
+  dataset_name: ${paths.dataset_name}
+  mean: [0.55363793, 0.4712127, 0.6193594]
+  stdv:  [0.20904234, 0.2182459, 0.1598295]
+  # transforms: 
+  #   - _target_: albumentations.augmentations.geometric.rotate.RandomRotate90
+  #     always_apply: 1
+  #   - _target_: albumentations.augmentations.crops.transforms.RandomResizedCrop
+  #     height: 224
+  #     width: 224

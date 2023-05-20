@@ -1,0 +1,4 @@
+annot_path: /mnt/bctl/nocc0001/lobular/lobular_clean_annotations_2
+wsi_path: /mnt/bctl/nocc0001/lobular/lobular_slides
+
+out_path: /mnt/bctl/nocc0001/lobular/tiles
