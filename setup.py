@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 setup(
     name="pyaracnn",
     version="0.0.1",
-    description="Pytorch Implementation of ARACNN",
+    description="Pytorch Lightning implementation of ARACNN",
     author="",
     author_email="",
     url="https://github.com/user/project",
