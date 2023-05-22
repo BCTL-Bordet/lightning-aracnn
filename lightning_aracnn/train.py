@@ -10,7 +10,7 @@ from omegaconf import DictConfig
 
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
-from pyaracnn import utils
+from lightning_aracnn import utils
 
 log = utils.get_pylogger(__name__)
 

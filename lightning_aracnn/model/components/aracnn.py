@@ -1,6 +1,6 @@
 from torch import nn
 
-from pyaracnn.model.components.blocks import ConvBlock, Head, ResidualBlock
+from lightning_aracnn.model.components.blocks import ConvBlock, Head, ResidualBlock
 
 
 class ARACNN(nn.Module):

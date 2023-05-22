@@ -1,6 +1,6 @@
 from lightning.pytorch.utilities import rank_zero_only
 
-from pyaracnn.utils import pylogger
+from lightning_aracnn.utils import pylogger
 
 log = pylogger.get_pylogger(__name__)
 

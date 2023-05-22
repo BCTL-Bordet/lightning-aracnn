@@ -4,7 +4,7 @@ from typing import Callable
 
 from omegaconf import DictConfig
 
-from pyaracnn.utils import pylogger, rich_utils
+from lightning_aracnn.utils import pylogger, rich_utils
 
 log = pylogger.get_pylogger(__name__)
 

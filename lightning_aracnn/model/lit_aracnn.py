@@ -1,17 +1,23 @@
 from typing import Any, List
-import lightning.pytorch as pl
+import lightning as L
 import torch.nn as nn
 import torch
 import pyrootutils
+from torchmetrics.classification import (
+    MulticlassAccuracy,
+    MulticlassF1Score,
+    MulticlassConfusionMatrix,
+)
+from torchmetrics import MeanMetric, ClasswiseWrapper, MetricCollection, ConfusionMatrix
 
 from scipy.stats import entropy
-from pyaracnn.utils.io_utils import confusion_matrix_to_image
+from lightning_aracnn.utils.io_utils import confusion_matrix_to_image
 import numpy as np
 
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 
-class LitARACNN(pl.LightningModule):
+class LitARACNN(L.LightningModule):
     def __init__(
         self,
         net: nn.Module,
@@ -37,44 +43,53 @@ class LitARACNN(pl.LightningModule):
 
         self.n_inference = num_inferences
         self.num_classes = num_classes
-        self.class_names = class_names
+        self.class_names = list(class_names)
         self.original_aracnn = original_aracnn
 
         self.criterion = torch.nn.NLLLoss()
 
+        # Metric dict
         self.metrics = nn.ModuleDict(
             {
-                f"{stage}_dict": nn.ModuleDict(
+                f"{stage}_metrics": nn.ModuleDict(
                     {
-                        "acc": clf.Accuracy(
-                            task="multiclass",
-                            num_classes=num_classes,
+                        "clf": MetricCollection(
+                            {
+                                "mc_acc": ClasswiseWrapper(
+                                    MulticlassAccuracy(num_classes=num_classes, average=None),
+                                    labels=self.class_names,
+                                ),
+                                "mc_f1": ClasswiseWrapper(
+                                    MulticlassF1Score(num_classes=num_classes, average=None),
+                                    labels=self.class_names,
+                                ),
+                                "acc": MulticlassAccuracy(num_classes=num_classes),
+                                "f1": MulticlassF1Score(num_classes=num_classes),
+                            }
                         ),
-                        "f1": clf.F1Score(
-                            task="multiclass",
-                            num_classes=num_classes,
+                        "loss": MetricCollection(
+                            {
+                                "loss": MeanMetric(),
+                            },
                         ),
-                        "auroc": clf.AUROC(
-                            task="multiclass",
-                            num_classes=num_classes,
+                        "confusion": MetricCollection(
+                            {
+                                "confusion": MulticlassConfusionMatrix(
+                                    num_classes=num_classes,
+                                )
+                            },
                         ),
-                        "confusion": clf.ConfusionMatrix(
-                            task="multiclass",
-                            num_classes=num_classes,
-                        ),
-                        "loss": MeanMetric(),
                     }
                 )
                 for stage in ["train", "val", "test"]
             }
         )
 
-
     def forward(self, x: any):
         return self.net(x)
 
     def reset_metrics(self, stage: str):
-        for metric in self.metrics[f"{stage}_dict"].values():
+        for metric in self.metrics[f"{stage}_metrics"].values():
             metric.reset()
 
     def on_train_start(self):
@@ -95,7 +110,7 @@ class LitARACNN(pl.LightningModule):
         preds = torch.argmax(probs, dim=1)
 
         out = {"loss": loss, "probs": probs, "preds": preds, "target": y}
-        self.log_metrics(out, stage)
+        self.update_metrics(out, stage)
 
         return out
 
@@ -120,44 +135,66 @@ class LitARACNN(pl.LightningModule):
             return self.model_step_classic(batch, stage)
 
     def on_model_epoch_end(self, stage: str) -> None:
-        # log metrics
-        conf_matrix = self.metrics[f"{stage}_dict"]["confusion"].compute().cpu()
-        conf_matrix_image = confusion_matrix_to_image(conf_matrix, self.class_names)
+        # log clf and loss metrics
+        for kind in ["clf", "loss"]:
+            # compute metrics
+            res = self.metrics[f"{stage}_metrics"][kind].compute()
 
+            # get unique metric groups
+            names = res.keys()
+            names = [name.split("_")[0] for name in names]
+            # uniq_names, idxs = np.unique(np.array(names), return_inverse=True)
+
+            for name, value in res.items():
+                self.log(f"{stage}/{name}", value)
+
+            # write groups to same tensorboard plot
+            # for name in names:
+            # metric_group = {k: v for k, v in res.items() if k.startswith(name)}
+            # self.logger.experiment.add_scalars(
+            # f"{stage}/{name}",
+            # metric_group,
+            # self.current_epoch,
+            # )
+
+        # log confusion matrix
+        # get data
+        conf_matrix = self.metrics[f"{stage}_metrics"]["confusion"].compute()["confusion"].cpu()
+        # generate image
+        conf_matrix_image = confusion_matrix_to_image(conf_matrix, self.class_names)
+        # write image
         self.logger.experiment.add_image(
-            f"confusion_matrix_{stage}",
+            f"{stage}/conf_matrix",
             img_tensor=conf_matrix_image,
             global_step=self.global_step,
             dataformats="HWC",
         )
 
-        for name, metric in self.metrics[f"{stage}_dict"].items():
-            if name != "confusion":
-                self.log(
-                    f"{stage}/{name}",
-                    metric.compute(),
-                    on_step=False,
-                    on_epoch=True,
-                    prog_bar=True,
-                )
+        # log loss to progressbar
+        # self.log(
+        #     f"{stage}/{name}",
+        #     self.metrics[f"{stage}_metrics"]["loss"].compute()["loss"],
+        #     on_step=False,
+        #     on_epoch=True,
+        #     prog_bar=True,
+        # )
 
         self.reset_metrics(stage)
 
-    def log_metrics(self, outputs: List[Any], stage: str):
+    def update_metrics(self, outputs: List[Any], stage: str):
         # update metrics
-        self.metrics[stage + "_dict"]["acc"].update(
+
+        self.metrics[f"{stage}_metrics"]["clf"].update(
             outputs["preds"],
             outputs["target"],
         )
-        self.metrics[stage + "_dict"]["auroc"].update(
-            outputs["probs"],
-            outputs["target"],
-        )
-        self.metrics[stage + "_dict"]["confusion"].update(
+
+        self.metrics[f"{stage}_metrics"]["confusion"].update(
             outputs["preds"],
             outputs["target"],
         )
-        self.metrics[stage + "_dict"]["loss"].update(
+
+        self.metrics[f"{stage}_metrics"]["loss"].update(
             outputs["loss"],
         )
 

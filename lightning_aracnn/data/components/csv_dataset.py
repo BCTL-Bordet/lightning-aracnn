@@ -1,7 +1,6 @@
 import os
 import torch
 import pandas as pd
-from skimage import io, transform
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
@@ -22,8 +21,8 @@ class CSVDataset(Dataset):
         dataset_name: str,
         mean: Tuple[float, float, float],
         stdv: Tuple[float, float, float],
-        transforms = [],
-        stain_augm = None,
+        transforms=[],
+        stain_augm=None,
     ):
         super().__init__()
         self.image_root = os.path.join(root, image_folder)
@@ -35,7 +34,7 @@ class CSVDataset(Dataset):
         self.targets = self.dataset["class"]
 
         self.transforms = a.Compose(transforms)
-        self.stain_augm = stain_augm   
+        self.stain_augm = stain_augm
 
     def __getitem__(self, idx: int) -> any:
         ## GET IMAGE
@@ -43,21 +42,21 @@ class CSVDataset(Dataset):
         sample = self.samples[idx]
         image_path = os.path.join(self.image_root, sample)
         mask_path = os.path.join(self.annot_root, sample)
-        
+
         # read image from filesyste
         image = np.array(Image.open(image_path))
         mask = np.array(Image.open(mask_path))
 
         # apply transformation
         res = self.transforms(image=image, mask=mask)
-        image = res['image']
-        mask = res['mask']
+        image = res["image"]
+        mask = res["mask"]
 
         if self.stain_augm:
             image = self.stain_augm(image=image, mask=mask)
-            
+
         image = img_to_tensor(image)
-        
+
         # GET CLASS
         cls = self.targets[idx]
 

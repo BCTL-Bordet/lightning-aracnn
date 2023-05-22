@@ -8,7 +8,7 @@ dataset_train:
   root:  ${paths.data_dir}
   image_folder: ${paths.image_folder}
   annot_folder: ${paths.annot_folder}
-  dataset_folder: ${paths.dataset_folder}/patient_exclusive_datasets/85um-large_no-artefact-background_in-situ-as-tumor
+  dataset_folder: ${paths.dataset_folder}/patient_exclusive_datasets/85um-huge_no-artefact-background_in-situ-as-tumor_no-background
   dataset_name: train.csv
   mean: [0.77021825, 0.56739763, 0.73179005]
   stdv:  [0.22137521, 0.20181837, 0.15625069]
@@ -17,7 +17,7 @@ dataset_val:
   root:  ${paths.data_dir}
   image_folder: ${paths.image_folder}
   annot_folder: ${paths.annot_folder}
-  dataset_folder: ${paths.dataset_folder}/patient_exclusive_datasets/85um-large_no-artefact-background_in-situ-as-tumor
+  dataset_folder: ${paths.dataset_folder}/patient_exclusive_datasets/85um-huge_no-artefact-background_in-situ-as-tumor_no-background
   dataset_name: val.csv
   mean: [0.77021825, 0.56739763, 0.73179005]
   stdv:  [0.22137521, 0.20181837, 0.15625069]
@@ -26,7 +26,7 @@ dataset_test:
   root:  ${paths.data_dir}
   image_folder: ${paths.image_folder}
   annot_folder: ${paths.annot_folder}
-  dataset_folder: ${paths.dataset_folder}/patient_exclusive_datasets/85um-large_no-artefact-background_in-situ-as-tumor
+  dataset_folder: ${paths.dataset_folder}/patient_exclusive_datasets/85um-huge_no-artefact-background_in-situ-as-tumor_no-background
   dataset_name: test.csv
   mean: [0.77021825, 0.56739763, 0.73179005]
   stdv:  [0.22137521, 0.20181837, 0.15625069]

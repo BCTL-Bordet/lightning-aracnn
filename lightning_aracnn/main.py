@@ -7,11 +7,10 @@ import torch
 from lightning import Callback, LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
-from torchsummary import summary
 
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
-from pyaracnn.model.components.aracnn import ARACNN
-from pyaracnn.model.lit_aracnn import LitARACNN
+from lightning_aracnn.model.components.aracnn import ARACNN
+from lightning_aracnn.model.lit_aracnn import LitARACNN
 
 if __name__ == "__main__":
     # net = ARACNN().cuda()
@@ -22,5 +21,5 @@ if __name__ == "__main__":
     print(var_drop)
     print(var_drop.shape)
     # Shannon entropy
-    h = entropy(var_drop, axis=0)
+    # h = entropy(var_drop, axis=0)
     

@@ -14,8 +14,8 @@ from PIL import Image
 from tqdm import tqdm
 
 
-from pyaracnn.tiling.morphology import Tile, WSIMorphology
-from pyaracnn.utils import get_pylogger, makedir
+from lightning_aracnn.tiling.morphology import Tile, WSIMorphology
+from lightning_aracnn.utils import get_pylogger, makedir
 
 Image.MAX_IMAGE_PIXELS = 2e30
 

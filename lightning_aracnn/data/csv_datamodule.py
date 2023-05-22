@@ -1,15 +1,15 @@
 import torch
-from lightning import LightningDataModule
+import lightning as L
 from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split, Subset
 from torch.utils.data.distributed import DistributedSampler
 from torchvision.datasets import MNIST
 from torchvision.transforms import transforms
 from typing import Any, Dict, Optional, Tuple
 
-from pyaracnn.utils.data_utils import get_splits
+from lightning_aracnn.utils.data_utils import get_splits
 
 
-class CSVDataModule(LightningDataModule):
+class CSVDataModule(L.LightningDataModule):
     def __init__(
         self,
         dataset: Dataset,
@@ -65,7 +65,7 @@ class CSVDataModule(LightningDataModule):
         return self.stage_dataloader("test")
 
 
-class CSVDataModuleNoSplit(LightningDataModule):
+class CSVDataModuleNoSplit(L.LightningDataModule):
     def __init__(
         self,
         dataset_train: Dataset,
@@ -95,7 +95,6 @@ class CSVDataModuleNoSplit(LightningDataModule):
 
     def setup(self, stage: Optional[str] = None):
         if not all(self.datasets.values()):
-
             self.datasets["train"] = self.dataset_train
             self.datasets["val"] = self.dataset_val
             self.datasets["test"] = self.dataset_test
