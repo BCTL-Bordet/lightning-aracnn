@@ -66,7 +66,7 @@ data:
         scale: [0.8, 1.2]
         ratio: [1, 1]
         always_apply: true
-      - _target_: pyaracnn.data.components.transforms.ElasticTransformDrawUniform
+      - _target_: lightning_aracnn.data.components.transforms.ElasticTransformDrawUniform
         alpha: [80, 120]
         sigma: [9, 11]
       - _target_: albumentations.augmentations.GaussNoise
@@ -80,7 +80,7 @@ data:
       #   hue: 1
       #   saturation: 1
     # stain_augm: 
-      # _target_ : pyaracnn.data.components.transforms.StainAugmentation
+      # _target_ : lightning_aracnn.data.components.transforms.StainAugmentation
       # sigma2: [-0.2, 0.2]
       # out_indices: [0, 5, 11]
 

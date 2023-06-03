@@ -19,14 +19,13 @@ tags: ["aracnn", "test run", "8 classes", "large"]
 seed: 42
 
 model:
-  num_classes: 8
+  num_classes: 7
   class_names: 
     - Ac. Stroma
     - C. Stroma
     - Fat Tissue
     - High TILs
     - Mixed
-    - Necrosis
     - Normal Breast
     - Tumor
   optimizer:
@@ -81,10 +80,15 @@ data:
       #   hue: 1
       #   saturation: 1
     # stain_augm: 
-      # _target_ : lightning_aracnn.data.components.transforms.StainAugmentation
+      # _target_ : pyaracnn.data.components.transforms.StainAugmentation
       # sigma2: [-0.2, 0.2]
       # out_indices: [0, 5, 11]
+    dataset_folder: ${paths.dataset_folder}/patient_exclusive_datasets/hierarchical-8_classes-5000_inst
 
+  dataset_val: 
+    dataset_folder: ${paths.dataset_folder}/patient_exclusive_datasets/hierarchical-8_classes-5000_inst
+  dataset_test: 
+    dataset_folder: ${paths.dataset_folder}/patient_exclusive_datasets/hierarchical-8_classes-5000_inst
 
 
 logger:

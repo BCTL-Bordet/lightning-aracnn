@@ -3,7 +3,7 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="pyaracnn",
+    name="lightning_aracnn",
     version="0.0.1",
     description="Pytorch Lightning implementation of ARACNN",
     author="",

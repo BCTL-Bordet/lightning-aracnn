@@ -11,10 +11,10 @@ from torchmetrics.classification import (
 from torchmetrics import MeanMetric, ClasswiseWrapper, MetricCollection, ConfusionMatrix
 
 from scipy.stats import entropy
-from lightning_aracnn.utils.io_utils import confusion_matrix_to_image
 import numpy as np
 
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+from lightning_aracnn.utils.io_utils import confusion_matrix_to_image
 
 
 class LitARACNN(L.LightningModule):

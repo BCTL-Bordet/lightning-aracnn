@@ -1,4 +1,4 @@
-_target_: pyaracnn.data.csv_datamodule.CSVDataModule
+_target_: lightning_aracnn.data.csv_datamodule.CSVDataModule
 batch_size: 32
 train_val_test_split:
   - 80
@@ -8,7 +8,7 @@ num_workers: 6
 pin_memory: False
 
 dataset:
-  _target_: pyaracnn.data.components.csv_dataset.CSVDataset
+  _target_: lightning_aracnn.data.components.csv_dataset.CSVDataset
   root:  ${paths.data_dir}
   image_folder: ${paths.image_folder}
   dataset_folder: ${paths.dataset_folder}

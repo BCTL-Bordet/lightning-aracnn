@@ -36,7 +36,7 @@ model:
     weight_decay: 0.005
     lr: 0.0005
   net: 
-    _target_: pyaracnn.model.components.resnet.ResNet
+    _target_: lightning_aracnn.model.components.resnet.ResNet
     num_classes: 8
     freeze: false
 

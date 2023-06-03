@@ -1,4 +1,4 @@
-_target_: pyaracnn.model.lit_aracnn.LitARACNN
+_target_: lightning_aracnn.model.lit_aracnn.LitARACNN
 
 num_inferences: 10
 num_classes: 11
@@ -6,7 +6,7 @@ aux_loss_weight: 0.2
 main_loss_weight: 0.8
 
 net:
-  _target_: pyaracnn.model.components.aracnn.ARACNN
+  _target_: lightning_aracnn.model.components.aracnn.ARACNN
   num_classes: ${..num_classes}
   head_hidden_dim: 32
   dropout_rate: 0.5
