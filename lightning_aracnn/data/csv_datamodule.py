@@ -7,7 +7,7 @@ from torchvision.transforms import transforms
 from typing import Any, Dict, Optional, Tuple
 
 from lightning_aracnn.utils.data_utils import get_splits
-
+from lightning_aracnn.data.components.csv_dataset import CSVDataset
 
 class CSVDataModule(L.LightningDataModule):
     def __init__(
@@ -68,24 +68,15 @@ class CSVDataModule(L.LightningDataModule):
 class CSVDataModuleNoSplit(L.LightningDataModule):
     def __init__(
         self,
-        dataset_train: Dataset,
-        dataset_val: Dataset,
-        dataset_test: Dataset,
-        batch_size: int = 32,
-        num_workers: int = 6,
-        pin_memory: bool = False,
-        persistent_workers=False,
+        augmentations: dict,
+        dataset_kwargs: dict,
+        dataloader_kwargs: dict,
     ):
         super().__init__()
-
-        self.dataset_train = dataset_train
-        self.dataset_val = dataset_val
-        self.dataset_test = dataset_test
-
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.pin_memory = pin_memory
-        self.persistent_workers = persistent_workers
+        
+        self.augmentations = augmentations
+        self.dataset_kwargs = dataset_kwargs
+        self.dataloader_kwargs = dataloader_kwargs
 
         self.datasets = {
             "train": None,
@@ -95,21 +86,29 @@ class CSVDataModuleNoSplit(L.LightningDataModule):
 
     def setup(self, stage: Optional[str] = None):
         if not all(self.datasets.values()):
-            self.datasets["train"] = self.dataset_train
-            self.datasets["val"] = self.dataset_val
-            self.datasets["test"] = self.dataset_test
+            self.datasets["train"] = CSVDataset(
+                stage="train",
+                augmentations=self.augmentations,
+                **self.dataset_kwargs,
+            )
+            self.datasets["val"] = CSVDataset(
+                stage="val",
+                **self.dataset_kwargs,
+            )
+            self.datasets["test"] = CSVDataset(
+                stage="test",
+                **self.dataset_kwargs,
+            )
+            
 
     def stage_dataloader(self, stage: str):
-        # sampler = DistributedSampler(self.datasets[stage])
-        sampler = None
+        sampler = DistributedSampler(self.datasets[stage])
+        # sampler = None
         return DataLoader(
             dataset=self.datasets[stage],
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            persistent_workers=self.persistent_workers,
             shuffle=False,
             sampler=sampler,
+            **self.dataloader_kwargs
         )
 
     def train_dataloader(self):
