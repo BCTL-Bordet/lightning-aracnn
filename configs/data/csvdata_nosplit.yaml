@@ -1,38 +1,14 @@
 _target_: lightning_aracnn.data.csv_datamodule.CSVDataModuleNoSplit
-batch_size: 32
-num_workers: 6
-pin_memory: False
-
-dataset_train:
-  _target_: lightning_aracnn.data.components.csv_dataset.CSVDataset
+dataloader_kwargs:
+  batch_size: 32
+  num_workers: 6
+  persistent_workers: true
+  pin_memory: true
+dataset_kwargs:
   root:  ${paths.data_dir}
   image_folder: ${paths.image_folder}
   annot_folder: ${paths.annot_folder}
-  dataset_folder: ${paths.dataset_folder}/patient_exclusive_datasets/85um-huge_no-artefact-background_in-situ-as-tumor_no-background
-  dataset_name: train.csv
+  dataset_folder: ${paths.dataset_folder}
+  dataset_version: ???
   mean: [0.77021825, 0.56739763, 0.73179005]
-  stdv:  [0.22137521, 0.20181837, 0.15625069]
-dataset_val:
-  _target_: lightning_aracnn.data.components.csv_dataset.CSVDataset
-  root:  ${paths.data_dir}
-  image_folder: ${paths.image_folder}
-  annot_folder: ${paths.annot_folder}
-  dataset_folder: ${paths.dataset_folder}/patient_exclusive_datasets/85um-huge_no-artefact-background_in-situ-as-tumor_no-background
-  dataset_name: val.csv
-  mean: [0.77021825, 0.56739763, 0.73179005]
-  stdv:  [0.22137521, 0.20181837, 0.15625069]
-dataset_test:
-  _target_: lightning_aracnn.data.components.csv_dataset.CSVDataset
-  root:  ${paths.data_dir}
-  image_folder: ${paths.image_folder}
-  annot_folder: ${paths.annot_folder}
-  dataset_folder: ${paths.dataset_folder}/patient_exclusive_datasets/85um-huge_no-artefact-background_in-situ-as-tumor_no-background
-  dataset_name: test.csv
-  mean: [0.77021825, 0.56739763, 0.73179005]
-  stdv:  [0.22137521, 0.20181837, 0.15625069]
-  # transforms: 
-  #   - _target_: albumentations.augmentations.geometric.rotate.RandomRotate90
-  #     always_apply: 1
-  #   - _target_: albumentations.augmentations.crops.transforms.RandomResizedCrop
-  #     height: 224
-  #     width: 224
+  stdv: [0.22137521, 0.20181837, 0.15625069]
