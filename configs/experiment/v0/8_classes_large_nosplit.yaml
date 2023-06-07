@@ -1,0 +1,54 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /paths: localized_training.yaml
+  - override /data: csvdata_nosplit.yaml
+  - override /model: aracnn.yaml
+  - override /callbacks: default.yaml
+  - override /trainer: ddp.yaml
+  # - override /trainer: gpu.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["aracnn", "test run", "8 classes", "large"]
+
+seed: 42
+
+model:
+  num_classes: 8
+  class_names: 
+    - Ac. Stroma
+    - C. Stroma
+    - Fat Tissue
+    - High TILs
+    - Hole
+    - Mixed
+    - Normal Breast
+    - Tumor
+  optimizer:
+    weight_decay: 0.01
+    lr: 0.0001
+
+  scheduler:
+    patience: 10
+
+trainer:
+  min_epochs: 10
+  max_epochs: 100
+  devices: -1
+  # devices: 1
+  
+data:
+  batch_size: 256
+  pin_memory: true
+  persistent_workers: true
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "aracnn"
+
