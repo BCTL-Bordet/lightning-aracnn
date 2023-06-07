@@ -2,12 +2,13 @@ import torch
 import lightning as L
 from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split, Subset
 from torch.utils.data.distributed import DistributedSampler
+from torch.utils.data import WeightedRandomSampler
 from torchvision.datasets import MNIST
 from torchvision.transforms import transforms
 from typing import Any, Dict, Optional, Tuple
 
 from lightning_aracnn.utils.data_utils import get_splits
-from lightning_aracnn.data.components.csv_dataset import CSVDataset
+from lightning_aracnn.data.components.csv_dataset import CSVDataset, WeightedCSVDataset
 
 class CSVDataModule(L.LightningDataModule):
     def __init__(
@@ -71,43 +72,47 @@ class CSVDataModuleNoSplit(L.LightningDataModule):
         augmentations: dict,
         dataset_kwargs: dict,
         dataloader_kwargs: dict,
+        stain_augmentation: object = None,
     ):
         super().__init__()
         
         self.augmentations = augmentations
+        self.stain_augmentation = stain_augmentation
         self.dataset_kwargs = dataset_kwargs
         self.dataloader_kwargs = dataloader_kwargs
-
         self.datasets = {
             "train": None,
             "val": None,
             "test": None,
         }
+        
+        
+        self.dataset_class = CSVDataset
 
     def setup(self, stage: Optional[str] = None):
         if not all(self.datasets.values()):
-            self.datasets["train"] = CSVDataset(
+            self.datasets["train"] = self.dataset_class(
                 stage="train",
                 augmentations=self.augmentations,
+                stain_augmentation=self.stain_augmentation,
                 **self.dataset_kwargs,
             )
-            self.datasets["val"] = CSVDataset(
+            self.datasets["val"] = self.dataset_class(
                 stage="val",
                 **self.dataset_kwargs,
             )
-            self.datasets["test"] = CSVDataset(
+            self.datasets["test"] = self.dataset_class(
                 stage="test",
                 **self.dataset_kwargs,
             )
             
 
     def stage_dataloader(self, stage: str):
-        sampler = DistributedSampler(self.datasets[stage])
-        # sampler = None
+        # sampler = DistributedSampler(self.datasets[stage])
         return DataLoader(
             dataset=self.datasets[stage],
             shuffle=False,
-            sampler=sampler,
+            # sampler=sampler,
             **self.dataloader_kwargs
         )
 
@@ -119,3 +124,21 @@ class CSVDataModuleNoSplit(L.LightningDataModule):
 
     def test_dataloader(self):
         return self.stage_dataloader("test")
+
+
+class WeightedCSVDataModuleNoSplit(CSVDataModuleNoSplit):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.dataset_class = WeightedCSVDataset
+    
+    def stage_dataloader(self, stage: str):
+        return DataLoader(
+            dataset=self.datasets[stage],
+            shuffle=False,
+            sampler=WeightedRandomSampler(
+                self.datasets[stage].get_weights(), 
+                len(self.datasets[stage].get_weights()),
+            ),
+            **self.dataloader_kwargs,
+        )
