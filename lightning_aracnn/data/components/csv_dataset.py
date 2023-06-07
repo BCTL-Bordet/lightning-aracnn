@@ -25,7 +25,7 @@ class CSVDataset(Dataset):
         mean: Tuple[float, float, float],
         stdv: Tuple[float, float, float],
         augmentations=[],
-        stain_augmentations=[],
+        stain_augmentation=None,
     ):
         super().__init__()
         self.image_root = os.path.join(root, image_folder)
@@ -38,7 +38,7 @@ class CSVDataset(Dataset):
 
         
         self.augment = a.Compose(augmentations)
-        self.augment_stain = a.Compose(stain_augmentations)
+        self.augment_stain = stain_augmentation
         self.normalize = a.Compose([Normalize(mean, stdv), ToTensorV2()])
 
     def __getitem__(self, idx: int) -> any:
@@ -48,18 +48,21 @@ class CSVDataset(Dataset):
         # read sample path from .csv dataset
         sample = self.samples[idx]
         image_path = os.path.join(self.image_root, sample)
-        mask_path = os.path.join(self.annot_root, sample)
+        # mask_path = os.path.join(self.annot_root, sample)
 
         # read image from filesyste
         image = np.array(Image.open(image_path))
-        mask = np.array(Image.open(mask_path))
+        # mask = np.array(Image.open(mask_path))
 
         # apply augmentations
-        res = self.augment(image=image, mask=mask)
-        image, mask = res["image"], res["mask"]
+        res = self.augment(image=image)
+        image = res["image"]
+        # res = self.augment(image=image, mask=mask)
+        # image, mask = res["image"], res["mask"]
 
         # TODO: apply stain augmentations
-        image = self.augment_stain(image=image)['image']
+        # if self.augment_stain:
+            # image = self.augment_stain(image, mask)
         
         # apply normalization
         image = self.normalize(image=image)['image']
@@ -70,3 +73,12 @@ class CSVDataset(Dataset):
         self,
     ) -> int:
         return self.dataset.shape[0]
+
+
+class WeightedCSVDataset(CSVDataset):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.weights = self.dataset['weight']
+        
+    def get_weights(self):
+        return self.weights

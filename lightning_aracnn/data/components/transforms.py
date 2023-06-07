@@ -152,7 +152,7 @@ class StainAugmentation:
             "sigma2": random.uniform(*self.sigma2)
         }
     def __call__(self, image, mask):
-        if (random.random() < self.p) or self.always_apply:
+        if (np.random.random() < self.p) or self.always_apply:
             params = self.get_params()
             mask_out = np.isin(mask, self.out_indices)
 
