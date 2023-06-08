@@ -40,6 +40,7 @@ class ImageAnnotTiler:
         tile_annotation: bool = True,
         prefix: str = "",
         normalization: str = None,
+        to_disk: bool = True,
     ):
         """
         Image object with extended tiling properties
@@ -74,6 +75,8 @@ class ImageAnnotTiler:
         self.tile_annotation = tile_annotation
         self.normalization = normalization
 
+        self.to_disk = to_disk
+
         # color norm. standard (from TCGA-A2-A3XS-DX1, Amgad et al, 2019)
         self.cnorm = {
             "mu": np.array([8.74108109, -0.12440419, 0.0444982]),
@@ -102,9 +105,9 @@ class ImageAnnotTiler:
         self.wsi_ds = 2**wsi_ds_level
 
         # np.ndarray is transposed wrt PIL.Image                \/
-        self.ds_size = np.round(
-            np.array(self.annot.shape[:2][::-1]) / self.custom_ds
-        ).astype(np.int32)
+        self.ds_size = np.round(np.array(self.annot.shape[:2][::-1]) / self.custom_ds).astype(
+            np.int32
+        )
 
         # downscale the tile and step size
         self.tile_size = (tile_size // self.custom_ds) // self.wsi_ds
@@ -116,18 +119,12 @@ class ImageAnnotTiler:
         self.annot_out_dir = makedir(join(out_dir, prefix, "annot_tiles"))
         self.wsi_out_dir = makedir(join(out_dir, prefix, "wsi_tiles"))
 
-        self.tile()
+        # self.tile()
 
     def tile(self):
         """
         (Entrypoint) Extract tiles from image
         """
-        if self.normalization:
-            log.info(f"Normalizing WSI {self.sample_id}")
-            if self.normalization == "reinhard":
-                log.info(f"Applying Reinhard normalization")
-                self.__normalize()
-
         log.info(f"Tiling annotation {self.sample_id}")
 
         # rescale annotation to find grid faster
@@ -147,7 +144,7 @@ class ImageAnnotTiler:
 
         log.info(f"Saving tiles")
 
-        self.__extract_tiles(img)
+        infos = self.__extract_tiles(img)
 
         canvas = Image.fromarray(self.canvas).convert("P")
         canvas.putpalette(self.palette)
@@ -155,15 +152,19 @@ class ImageAnnotTiler:
 
         log.info(f"Finished tiling annotation {self.sample_id}")
 
-    def __normalize(self):
+        return infos
+
+    def __normalize_reinhard(self, image, mask):
         # get an "outside" mask (1 when not tissue), fat tissue(5) and hole(11) are considered background
-        mask = np.isin(self.annot, (0, 11, 5))
+        mask = np.isin(mask, (0, 11, 5))
         normalized = reinhard(
-            np.array(self.wsi),
+            np.array(image),
             target_mu=self.cnorm["mu"],
             target_sigma=self.cnorm["sigma"],
             mask_out=mask,
         )
+
+        return normalized
 
     def __rescale(self, img: np.ndarray) -> np.ndarray:
         """
@@ -255,11 +256,7 @@ class ImageAnnotTiler:
         y_range = np.arange(start_y, stop_y, step=self.tile_size)
         x_coords, y_coords = np.meshgrid(x_range, y_range, indexing="ij")
 
-        coords = (
-            np.array([x_coords.flatten(), y_coords.flatten()])
-            .astype(np.float32)
-            .transpose()
-        )
+        coords = np.array([x_coords.flatten(), y_coords.flatten()]).astype(np.float32).transpose()
 
         # buil process pool
         # num_workers = max(mp.cpu_count(), 4)
@@ -295,8 +292,11 @@ class ImageAnnotTiler:
         return coords
 
     def __extract_tiles(self, img: np.ndarray):
+        infos = []
         for coord in tqdm(self.coords, total=len(self.coords)):
-            self.__extract_tile(coord, img)
+            infos.append(self.__extract_tile(coord, img))
+
+        return infos
 
     def __extract_tile(self, coord, img: np.ndarray):
         # TODO: Split function between wsi and annot
@@ -314,10 +314,6 @@ class ImageAnnotTiler:
             level=0,
             size=(tile_size_up * self.wsi_ds, tile_size_up * self.wsi_ds),
         ).convert("RGB")
-
-        wsi_crop.save(
-            join(self.wsi_out_dir, f"{self.sample_id}-{coord[0]}_{coord[1]}.png")
-        )
 
         if self.tile_annotation:
             # read the corresponding crop from original image
@@ -359,9 +355,42 @@ class ImageAnnotTiler:
             # put back original palette
             annot_crop_up = Image.fromarray(annot_crop_up).convert("P")
             annot_crop_up.putpalette(self.palette)
-            annot_crop_up.save(
-                join(self.annot_out_dir, f"{self.sample_id}-{coord[0]}_{coord[1]}.png")
-            )
+
+            if self.normalization == "reinhard":
+                wsi_crop = self.__normalize_reinhard(wsi_crop, annot_crop_up)
+
+            if self.to_disk:
+                wsi_crop.save(
+                    join(
+                        self.wsi_out_dir,
+                        f"{self.sample_id}-{coord[0]}_{coord[1]}.png",
+                    ),
+                )
+                annot_crop_up.save(
+                    join(
+                        self.annot_out_dir,
+                        f"{self.sample_id}-{coord[0]}_{coord[1]}.png",
+                    )
+                )
+            else:
+                p0_wsi = (coord_up[0] * self.wsi_ds, coord_up[1] * self.wsi_ds)
+                p1_wsi = (
+                    coord_up[0] * self.wsi_ds + tile_size_up * self.wsi_ds,
+                    coord_up[1] * self.wsi_ds + tile_size_up * self.wsi_ds,
+                )
+
+                p0_annot = (coord_up[0], coord_up[1])
+                p1_annot = (
+                    coord_up[0] + tile_size_up,
+                    coord_up[1] + tile_size_up,
+                )
+
+                return (
+                    wsi_crop,
+                    (p0_wsi, p1_wsi),
+                    annot_crop_up,
+                    (p0_annot, p1_annot),
+                )
 
 
 class WSITiler:
@@ -441,9 +470,7 @@ class WSITiler:
         # crop.resize(np.array(crop.size) * self.ds_to_wsi)
 
         # crop = Image.fromarray(crop)
-        crop.save(
-            join(self.tiles_out_dir, f"{self.sample_id}-{coord[0]}_{coord[1]}.png")
-        )
+        crop.save(join(self.tiles_out_dir, f"{self.sample_id}-{coord[0]}_{coord[1]}.png"))
 
 
 if __name__ == "__main__":
