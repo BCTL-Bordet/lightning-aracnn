@@ -250,10 +250,12 @@ class LitARACNN(L.LightningModule):
         # repeat inference n_inference times
         for _ in range(self.n_inference):
             with torch.no_grad():
-                out, _ = self(batch)
-                trials.append(out.unsqueeze(0))
+                probs, _ = self(batch)
 
-        trials = torch.vstack(trials)
+                trials.append(probs.unsqueeze(0))
+
+        trials = torch.vstack(trials).detach().cpu()
+
         # compute entropies across repetitions
         h = entropy(trials, axis=0)
         return trials, h
