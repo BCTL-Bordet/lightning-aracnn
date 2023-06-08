@@ -30,13 +30,7 @@ model:
     - Tumor
   optimizer:
     weight_decay: 0.01
-    lr: 1e-3
-
-  scheduler:
-    _target_: CosineAnnealingWarmRestarts
-    T_0: 5
-    T_mult: 2 
-    eta_min: 1e-7
+    lr: 1e-5
 
 trainer:
   min_epochs: 10
@@ -45,7 +39,7 @@ trainer:
   accelerator: gpu
   devices: 1
   precision: 16-mixed
-  profiler: simple
+  # profiler: simple
 
 data:
   _target_: lightning_aracnn.data.csv_datamodule.WeightedCSVDataModuleNoSplit
@@ -57,6 +51,10 @@ data:
     persistent_workers: false
     pin_memory: false
   augmentations:
+    # common
+    - _target_: albumentations.augmentations.Resize
+      height: 368
+      width: 368
     # basic
     - _target_: albumentations.augmentations.RandomRotate90
     - _target_: albumentations.augmentations.Flip
@@ -78,8 +76,8 @@ data:
     - _target_: albumentations.augmentations.ColorJitter
       brightness: 0.35
       contrast: 0.5
-      hue: 0.1
-      saturation: 0.1
+      hue: 1
+      saturation: 1
   # stain_augmentation: 
   #   _target_ : lightning_aracnn.data.components.transforms.StainAugmentation
   #   sigma2: [-0.2, 0.2]
