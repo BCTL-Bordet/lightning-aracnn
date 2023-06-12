@@ -41,6 +41,7 @@ class ImageAnnotTiler:
         prefix: str = "",
         normalization: str = None,
         to_disk: bool = True,
+        num_workers: int = 4,
     ):
         """
         Image object with extended tiling properties
@@ -76,6 +77,7 @@ class ImageAnnotTiler:
         self.normalization = normalization
 
         self.to_disk = to_disk
+        self.num_workers = num_workers
 
         # color norm. standard (from TCGA-A2-A3XS-DX1, Amgad et al, 2019)
         self.cnorm = {
@@ -260,7 +262,7 @@ class ImageAnnotTiler:
 
         # buil process pool
         # num_workers = max(mp.cpu_count(), 4)
-        pool = mp.Pool(4)
+        pool = mp.Pool(self.num_workers)
 
         # check if each coordinate is inside contour (and outside the corresponding holes)
         iterable = [
@@ -356,34 +358,38 @@ class ImageAnnotTiler:
             annot_crop_up = Image.fromarray(annot_crop_up).convert("P")
             annot_crop_up.putpalette(self.palette)
 
+            # organize cropping point to name files (or return as info if self.to_disk is false)
+            p0_wsi = (coord_up[0] * self.wsi_ds, coord_up[1] * self.wsi_ds)
+            p1_wsi = (
+                coord_up[0] * self.wsi_ds + tile_size_up * self.wsi_ds,
+                coord_up[1] * self.wsi_ds + tile_size_up * self.wsi_ds,
+            )
+
+            p0_annot = (coord_up[0], coord_up[1])
+            p1_annot = (
+                coord_up[0] + tile_size_up,
+                coord_up[1] + tile_size_up,
+            )
+            
             if self.normalization == "reinhard":
                 wsi_crop = self.__normalize_reinhard(wsi_crop, annot_crop_up)
 
             if self.to_disk:
+                wsi_crop = Image.fromarray(wsi_crop)
                 wsi_crop.save(
                     join(
                         self.wsi_out_dir,
-                        f"{self.sample_id}-{coord[0]}_{coord[1]}.png",
+                        f"{self.sample_id}-{p0_wsi[0]}_{p0_wsi[1]}.png",
                     ),
                 )
+                # (note that the coordinates in the annotation crop are not correct because we need names to align, they should be downsampled)
                 annot_crop_up.save(
                     join(
                         self.annot_out_dir,
-                        f"{self.sample_id}-{coord[0]}_{coord[1]}.png",
+                        f"{self.sample_id}-{p0_wsi[0]}_{p0_wsi[1]}.png",
                     )
                 )
             else:
-                p0_wsi = (coord_up[0] * self.wsi_ds, coord_up[1] * self.wsi_ds)
-                p1_wsi = (
-                    coord_up[0] * self.wsi_ds + tile_size_up * self.wsi_ds,
-                    coord_up[1] * self.wsi_ds + tile_size_up * self.wsi_ds,
-                )
-
-                p0_annot = (coord_up[0], coord_up[1])
-                p1_annot = (
-                    coord_up[0] + tile_size_up,
-                    coord_up[1] + tile_size_up,
-                )
 
                 return (
                     wsi_crop,
