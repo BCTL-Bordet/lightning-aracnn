@@ -1,9 +1,7 @@
 _target_: lightning_aracnn.data.csv_datamodule.CSVDataModuleNoSplit
 dataloader_kwargs:
   batch_size: 32
-  num_workers: 6
-  persistent_workers: true
-  pin_memory: true
+  num_workers: 4
 dataset_kwargs:
   root:  ${paths.data_dir}
   image_folder: ${paths.image_folder}

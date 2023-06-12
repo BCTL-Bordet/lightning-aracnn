@@ -7,7 +7,9 @@ defaults:
   - local: tiling.yaml
   - paths: localized_tiling.yaml
 
-tile_size: 373 # 85um
-tile_annotations: False
+# tile_size: 373 # 85um
+tile_size: 224 # 51um
+tile_annotations: true
 prefix: reinhard
+out_dir: tiles_smaller
 normalization: reinhard

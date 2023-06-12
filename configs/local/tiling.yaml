@@ -1,4 +1,4 @@
 annot_path: /mnt/bctl/nocc0001/lobular_ductal/annotations_clean_ds2
 wsi_path: /mnt/bctl/nocc0001/lobular_ductal/slides
 
-out_path: /mnt/bctl/nocc0001/lobular_ductal/tiles_new
+out_root: /mnt/bctl/nocc0001/lobular_ductal/

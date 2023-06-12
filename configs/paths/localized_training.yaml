@@ -5,7 +5,7 @@ root_dir: ${oc.env:PROJECT_ROOT}
 
 # path to data directory
 data_dir: ${local.data_root}/
-image_folder: wsi_tiles_normalized
+image_folder: wsi_tiles
 annot_folder: annot_tiles
 dataset_folder: datasets/patient_exclusive_datasets
 
