@@ -124,7 +124,7 @@ class LitARACNN(L.LightningModule):
         preds = torch.argmax(probs, dim=1)
 
         out = {"loss": loss, "probs": probs, "preds": preds, "target": y}
-        self.log_metrics(out, stage)
+        self.update_metrics(out, stage)
 
         return out
 
