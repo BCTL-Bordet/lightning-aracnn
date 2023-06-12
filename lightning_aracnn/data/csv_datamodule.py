@@ -133,12 +133,17 @@ class WeightedCSVDataModuleNoSplit(CSVDataModuleNoSplit):
         self.dataset_class = WeightedCSVDataset
     
     def stage_dataloader(self, stage: str):
+        if stage == 'train':
+            sampler = WeightedRandomSampler(
+                self.datasets[stage].get_weights(), 
+                len(self.datasets[stage].get_weights()),
+            )
+        else:
+            sampler = None
+            
         return DataLoader(
             dataset=self.datasets[stage],
             shuffle=False,
-            sampler=WeightedRandomSampler(
-                self.datasets[stage].get_weights(), 
-                len(self.datasets[stage].get_weights()),
-            ),
+            sampler=sampler,
             **self.dataloader_kwargs,
         )
