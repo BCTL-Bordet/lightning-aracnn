@@ -41,6 +41,8 @@ def tile_dataset(cfg: DictConfig) -> Tuple[dict, dict]:
     tile_annotations = cfg.tile_annotations
     prefix = cfg.prefix
     normalization = cfg.normalization
+    
+    log.info(f"Saving @ {path.join(cfg.local.out_root, cfg.out_dir)}")
 
     # files_info = pd.read_csv(cfg.files_info)
 
@@ -51,7 +53,7 @@ def tile_dataset(cfg: DictConfig) -> Tuple[dict, dict]:
         delayed(tile)(
             annot_path,
             wsi_path,
-            cfg.local.out_path,
+            path.join(cfg.local.out_root, cfg.out_dir),
             cfg.tile_size,
             tile_annotations,
             prefix,
