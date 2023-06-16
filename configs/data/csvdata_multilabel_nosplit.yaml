@@ -1,0 +1,12 @@
+_target_: lightning_aracnn.data.csv_datamodule.MultiLabelCSVDataModuleNoSplit
+dataloader_kwargs:
+  batch_size: 32
+  num_workers: 4
+dataset_kwargs:
+  root:  ${paths.data_dir}
+  image_folder: ${paths.image_folder}
+  annot_folder: ${paths.annot_folder}
+  dataset_folder: ${paths.dataset_folder}
+  dataset_version: ???
+  mean: [0.77021825, 0.56739763, 0.73179005]
+  stdv: [0.22137521, 0.20181837, 0.15625069]

@@ -1,0 +1,32 @@
+_target_: lightning_aracnn.model.lit_aracnn.MultiLabelLitARACNN
+
+num_inferences: 10
+num_classes: 11
+aux_loss_weight: 0.2
+main_loss_weight: 0.8
+
+net:
+  _target_: lightning_aracnn.model.components.aracnn.ARACNN
+  num_classes: ${..num_classes}
+  head_hidden_dim: 32
+  dropout_rate: 0.5
+  num_blocks_first_path: 4
+  num_blocks_second_path: 3
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  betas: 
+    - 0.9
+    - 0.999
+  eps: 1e-7
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+  threshold: 0.0001
+  
