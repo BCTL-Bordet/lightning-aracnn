@@ -1,4 +1,5 @@
 from typing import Any, List
+from itertools import product
 import lightning as L
 import torch.nn as nn
 import torch
@@ -7,6 +8,8 @@ from torchmetrics.classification import (
     MulticlassAccuracy,
     MulticlassF1Score,
     MulticlassConfusionMatrix,
+    BinaryAUROC,
+    BinaryF1Score,
 )
 from torchmetrics import MeanMetric, ClasswiseWrapper, MetricCollection, ConfusionMatrix
 
@@ -56,11 +59,15 @@ class LitARACNN(L.LightningModule):
                         "clf": MetricCollection(
                             {
                                 "mc_acc": ClasswiseWrapper(
-                                    MulticlassAccuracy(num_classes=num_classes, average=None),
+                                    MulticlassAccuracy(
+                                        num_classes=num_classes, average=None
+                                    ),
                                     labels=self.class_names,
                                 ),
                                 "mc_f1": ClasswiseWrapper(
-                                    MulticlassF1Score(num_classes=num_classes, average=None),
+                                    MulticlassF1Score(
+                                        num_classes=num_classes, average=None
+                                    ),
                                     labels=self.class_names,
                                 ),
                                 "acc": MulticlassAccuracy(num_classes=num_classes),
@@ -88,13 +95,13 @@ class LitARACNN(L.LightningModule):
     def forward(self, x: any):
         return self.net(x)
 
-    def reset_metrics(self, stage: str):
-        for metric in self.metrics[f"{stage}_metrics"].values():
-            metric.reset()
+    def reset_metrics(self):
+        for stage in ["train", "val"]:
+            for metric in self.metrics[f"{stage}_metrics"].values():
+                metric.reset()
 
     def on_train_start(self):
-        self.reset_metrics("train")
-        self.reset_metrics("val")
+        self.reset_metrics()
         # by default lightning executes validation step sanity checks before training starts,
         # so it's worth to make sure validation metrics don't store results from these checks
 
@@ -135,6 +142,9 @@ class LitARACNN(L.LightningModule):
             return self.model_step_classic(batch, stage)
 
     def on_model_epoch_end(self, stage: str) -> None:
+        self.log_metrics(stage)
+
+    def log_metrics(self, stage: str) -> None:
         # log clf and loss metrics
         for kind in ["clf", "loss"]:
             # compute metrics
@@ -159,7 +169,9 @@ class LitARACNN(L.LightningModule):
 
         # log confusion matrix
         # get data
-        conf_matrix = self.metrics[f"{stage}_metrics"]["confusion"].compute()["confusion"].cpu()
+        conf_matrix = (
+            self.metrics[f"{stage}_metrics"]["confusion"].compute()["confusion"].cpu()
+        )
         # generate image
         conf_matrix_image = confusion_matrix_to_image(conf_matrix, self.class_names)
         # write image
@@ -178,8 +190,6 @@ class LitARACNN(L.LightningModule):
         #     on_epoch=True,
         #     prog_bar=True,
         # )
-
-        self.reset_metrics(stage)
 
     def update_metrics(self, outputs: List[Any], stage: str):
         # update metrics
@@ -208,7 +218,6 @@ class LitARACNN(L.LightningModule):
         return self.model_step(batch, "test")
 
     def training_step_end(self, outputs: List[Any]):
-        print("ole end")
         self.model_step_end(outputs, stage="train")
 
     def validation_step_end(self, outputs: List[Any]):
@@ -219,6 +228,7 @@ class LitARACNN(L.LightningModule):
 
     def on_train_epoch_end(self) -> None:
         self.on_model_epoch_end("train")
+        self.reset_metrics()
 
     def on_validation_epoch_end(self) -> None:
         self.on_model_epoch_end("val")
@@ -259,3 +269,127 @@ class LitARACNN(L.LightningModule):
         # compute entropies across repetitions
         h = entropy(trials, axis=0)
         return trials, h
+
+
+class MultiLabelLitARACNN(LitARACNN):
+    def __init__(
+        self,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+
+        self.aucs = nn.ModuleDict(
+            [
+                [f"{stage}/auc/{class_name}", BinaryAUROC()]
+                for stage, class_name in product(
+                    ["train", "val", "test"], self.class_names
+                )
+            ]
+            + [[f"{stage}/auc/avg", MeanMetric()] for stage in ["train", "val", "test"]]
+        )
+
+        self.f1s = nn.ModuleDict(
+            [
+                [f"{stage}/f1/{class_name}", BinaryF1Score()]
+                for stage, class_name in product(
+                    ["train", "val", "test"], self.class_names
+                )
+            ]
+            + [[f"{stage}/f1/avg", MeanMetric()] for stage in ["train", "val", "test"]]
+        )
+
+        self.losses = nn.ModuleDict(
+            [
+                # we need one metric for each available class
+                [f"{stage}/loss/{class_name}", MeanMetric()]
+                for stage, class_name in product(
+                    ["train", "val", "test"], self.class_names
+                )
+            ]
+            + [
+                [f"{stage}/loss/avg", MeanMetric()]
+                for stage in ["train", "val", "test"]
+            ]
+        )
+
+        self.criterion = nn.BCEWithLogitsLoss()
+
+    def model_step_classic(self, batch: Any, stage: str):
+        x, ys = batch
+
+        # the network will return binary logits for each possible class
+        logits = self(x)
+
+        assert len(logits) == self.num_classes
+
+        # loss
+        losses = [
+            self.criterion(logit, ys[:, i].unsqueeze(-1))
+            for i, logit in enumerate(logits)
+        ]
+        loss = sum(losses)
+
+        # uniform shapes (B, C)
+        logits = torch.stack(logits).squeeze().T
+
+        out = {"loss": loss, "losses": losses, "logits": logits, "targets": ys}
+        self.update_metrics(out, stage)
+
+        return out
+
+    def update_metrics(self, outputs: List[Any], stage: str):
+        for i in range(self.num_classes):
+            class_name = self.class_names[i]
+            loss = outputs["losses"][i]
+            logit = outputs["logits"][:, i]
+            target = outputs["targets"][:, i]
+
+            self.losses[f"{stage}/loss/{class_name}"].update(loss)
+            self.aucs[f"{stage}/auc/{class_name}"].update(logit, target)
+            self.f1s[f"{stage}/f1/{class_name}"].update(logit, target)
+
+        self.losses[f"{stage}/loss/avg"]
+
+    def log_metrics(self, stage: str) -> None:
+        aucs = []
+        f1s = []
+
+        for i in range(self.num_classes):
+            class_name = self.class_names[i]
+
+            loss = self.losses[f"{stage}/loss/{class_name}"].compute()
+            self.log(
+                f"{stage}/loss/{class_name}",
+                loss,
+            )
+
+            auc = self.aucs[f"{stage}/auc/{class_name}"].compute()
+            self.log(
+                f"{stage}/auc/{class_name}",
+                auc,
+            )
+
+            f1 = self.f1s[f"{stage}/f1/{class_name}"].compute()
+            self.log(
+                f"{stage}/f1/{class_name}",
+                f1,
+            )
+
+            aucs.append(auc)
+            f1s.append(f1)
+
+        self.log(f"{stage}/loss/avg", self.losses[f"{stage}/loss/avg"])
+        self.log(f"{stage}/auc/avg", torch.mean(torch.stack(aucs)))
+        self.log(f"{stage}/f1/avg", torch.mean(torch.stack(f1s)))
+
+    def reset_metrics(self):
+        [metric.reset() for metric in self.losses.values()]
+        [metric.reset() for metric in self.aucs.values()]
+        [metric.reset() for metric in self.f1s.values()]
+
+    def configure_optimizers(self):
+        optimizer = self.optimizer(params=self.parameters())
+        scheduler = self.scheduler(optimizer=optimizer)
+
+        return {"optimizer": optimizer, "lr_scheduler": scheduler}
