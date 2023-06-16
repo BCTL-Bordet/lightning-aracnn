@@ -8,7 +8,12 @@ from torchvision.transforms import transforms
 from typing import Any, Dict, Optional, Tuple
 
 from lightning_aracnn.utils.data_utils import get_splits
-from lightning_aracnn.data.components.csv_dataset import CSVDataset, WeightedCSVDataset
+from lightning_aracnn.data.components.csv_dataset import (
+    CSVDataset,
+    WeightedCSVDataset,
+    MultiLabelCSVDataset,
+)
+
 
 class CSVDataModule(L.LightningDataModule):
     def __init__(
@@ -75,7 +80,7 @@ class CSVDataModuleNoSplit(L.LightningDataModule):
         stain_augmentation: object = None,
     ):
         super().__init__()
-        
+
         self.augmentations = augmentations
         self.stain_augmentation = stain_augmentation
         self.dataset_kwargs = dataset_kwargs
@@ -85,8 +90,7 @@ class CSVDataModuleNoSplit(L.LightningDataModule):
             "val": None,
             "test": None,
         }
-        
-        
+
         self.dataset_class = CSVDataset
 
     def setup(self, stage: Optional[str] = None):
@@ -105,7 +109,6 @@ class CSVDataModuleNoSplit(L.LightningDataModule):
                 stage="test",
                 **self.dataset_kwargs,
             )
-            
 
     def stage_dataloader(self, stage: str):
         # sampler = DistributedSampler(self.datasets[stage])
@@ -113,7 +116,7 @@ class CSVDataModuleNoSplit(L.LightningDataModule):
             dataset=self.datasets[stage],
             shuffle=False,
             # sampler=sampler,
-            **self.dataloader_kwargs
+            **self.dataloader_kwargs,
         )
 
     def train_dataloader(self):
@@ -129,21 +132,28 @@ class CSVDataModuleNoSplit(L.LightningDataModule):
 class WeightedCSVDataModuleNoSplit(CSVDataModuleNoSplit):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         self.dataset_class = WeightedCSVDataset
-    
+
     def stage_dataloader(self, stage: str):
-        if stage == 'train':
+        if stage == "train":
             sampler = WeightedRandomSampler(
-                self.datasets[stage].get_weights(), 
+                self.datasets[stage].get_weights(),
                 len(self.datasets[stage].get_weights()),
             )
         else:
             sampler = None
-            
+
         return DataLoader(
             dataset=self.datasets[stage],
             shuffle=False,
             sampler=sampler,
             **self.dataloader_kwargs,
         )
+
+
+class MultiLabelCSVDataModuleNoSplit(CSVDataModuleNoSplit):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.dataset_class = MultiLabelCSVDataset
