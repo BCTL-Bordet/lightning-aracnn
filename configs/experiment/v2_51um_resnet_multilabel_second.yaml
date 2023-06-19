@@ -18,19 +18,18 @@ tags: ["aracnn", "test run", "6 classes", "large"]
 
 seed: 42
 
-
 model:
   net: 
-    freeze: False
-  num_classes: 3
+    freeze: True
+  ckpt_path: /home/nocc0001/code/lightning-aracnn/logs/train/runs/2023-06-15_15-24-22/checkpoints/last.ckpt
+  num_classes: 2
   class_names: 
     - High TILs
     - Normal Breast
-    - Vessel
 
   optimizer:
     weight_decay: 0.01
-    lr: 1e-3
+    lr: 1e-4
   scheduler: 
     _target_: torch.optim.lr_scheduler.StepLR
     step_size: 20
