@@ -32,12 +32,15 @@ class LitARACNN(L.LightningModule):
         num_classes: int = 11,
         class_names: List[str] = [],
         original_aracnn: bool = True,
+        ckpt_path: str = None,
     ):
         super().__init__()
 
         self.net = net
         self.optimizer = optimizer
         self.scheduler = scheduler
+
+        self.ckpt_path = ckpt_path
 
         # self.aux_loss_weight = torch.tensor(aux_loss_weight)
         self.register_buffer("aux_loss_weight", torch.tensor(aux_loss_weight))
@@ -91,6 +94,21 @@ class LitARACNN(L.LightningModule):
                 for stage in ["train", "val", "test"]
             }
         )
+
+        if self.ckpt_path:
+            self.load_backbone_weights()
+
+    def load_backbone_weights(self):
+        # load full state dict
+        state_dict = torch.load(self.ckpt_path)["state_dict"]
+        # get just backbone weights and remove net. prefix (ckpt is saved from the LightingModule POV)
+        backbone_state_dict = {
+            k.replace("net.", ""): v
+            for k, v in state_dict.items()
+            if k.startswith("net.backbone")
+        }
+        # load backbone keys. strict=false allows to run without errors even if head weights are missing
+        self.net.load_state_dict(backbone_state_dict, strict=False)
 
     def forward(self, x: any):
         return self.net(x)
